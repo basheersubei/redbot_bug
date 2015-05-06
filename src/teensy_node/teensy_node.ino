@@ -47,6 +47,7 @@ void setup()
 
 void loop()
 {
+  nh.spinOnce();
   if (following)
   {
     followNoCal();
