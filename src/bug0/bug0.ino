@@ -32,12 +32,12 @@ float theta = 0;  // in radians
 #define ROTATIONAL_VELOCITY 1.00f
 // command speeds for both wheels when going forward
 #define LEFT_WHEEL_FORWARD 50
-#define RIGHT_WHEEL_FORWARD 50
+#define RIGHT_WHEEL_FORWARD 46
 // command speeds for both wheels when turning right
 #define LEFT_WHEEL_TURN_RIGHT 50
-#define RIGHT_WHEEL_TURN_RIGHT 50
+#define RIGHT_WHEEL_TURN_RIGHT -50
 // command speeds for both wheels when turning left
-#define LEFT_WHEEL_TURN_LEFT 50
+#define LEFT_WHEEL_TURN_LEFT -50
 #define RIGHT_WHEEL_TURN_LEFT 50
 
 enum movement_states {
