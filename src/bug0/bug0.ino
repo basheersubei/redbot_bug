@@ -108,6 +108,7 @@ void loop()
 {
   current_millis = millis();
   int delta_t = current_millis - previous_millis;
+  
   // triggers start if accel has detected a bump
   if(xl.checkBump() && start == false) start = true;
   
@@ -120,16 +121,22 @@ void loop()
       // if we are off from the goal by threshold, turn towards goal
       if(abs(goal_angle) > GOAL_ANGLE_THRESHOLD) {
         if(goal_angle > 0) {
-          // TODO turn left
+          // turn left
+          motor.rightDrive(RIGHT_WHEEL_TURN_LEFT);
+          motor.leftDrive(LEFT_WHEEL_TURN_LEFT);
           movement_state = turning_left;
         } else {
-          // TODO turn right
+          // turn right
+          motor.rightDrive(RIGHT_WHEEL_TURN_RIGHT);
+          motor.leftDrive(LEFT_WHEEL_TURN_RIGHT);
           movement_state = turning_right;
         }
         
       // else we are pointing at goal, then go forward
       } else {
-        // TODO go forward
+        // go forward
+        motor.rightDrive(RIGHT_WHEEL_FORWARD);
+        motor.leftDrive(LEFT_WHEEL_FORWARD);
         movement_state = forward;
       }
       
@@ -137,25 +144,32 @@ void loop()
     } else if(bug_state == following_line) {
       // see if we need to turn right to stay on object
       if(need_to_turn_right()) {
-        // TODO turn right
+        // turn right
+        motor.rightDrive(RIGHT_WHEEL_TURN_RIGHT);
+        motor.leftDrive(LEFT_WHEEL_TURN_RIGHT);
         movement_state = turning_right;
         
       // otherwise, just go forward until you can reach the goal or lost the line
       } else {
         
-        // TODO go forward
+        // go forward
+        motor.rightDrive(RIGHT_WHEEL_FORWARD);
+        motor.leftDrive(LEFT_WHEEL_FORWARD);
         movement_state = forward;
         
         // if we can reach the goal (it's on our left), go towards goal
         if(get_goal_angle() < 0) {
           bug_state = heading_to_goal;
-          // TODO stop robot
+          // stop robot
+          motor.brake();
           movement_state = stopped;
           
           
         // else if we lost the line, turn left to find it again
         } else if (check_lost_line()) {
-          // TODO turn left
+          // turn left
+          motor.rightDrive(RIGHT_WHEEL_TURN_LEFT);
+          motor.leftDrive(LEFT_WHEEL_TURN_LEFT);
           movement_state = turning_left;
         }
         
@@ -168,7 +182,6 @@ void loop()
     
     
     
-    // TODO fix turning directions
     // calculate odometry according to movement_state (regardless of bug_state)
     // calculate omega when turning left
     if(movement_state == turning_left) {
