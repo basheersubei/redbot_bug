@@ -23,8 +23,8 @@ boolean start = false;
 
 // TODO actually calibrate robot and set these
 // there will be only two commands: go forward (at a constant rate v (in m/s)) and turn about center (at a constant rate omega (in rad/s)).
-#define FORWARD_VELOCITY 1.00f
-#define ROTATIONAL_VELOCITY 1.00f
+#define FORWARD_VELOCITY 0.074
+#define ROTATIONAL_VELOCITY 0.94247779607
 // command speeds for both wheels when going forward
 #define LEFT_WHEEL_FORWARD 50
 #define RIGHT_WHEEL_FORWARD 46
@@ -56,19 +56,21 @@ void loop()
   if(start) {
     start_time = millis();
     current_time = millis();
-    while(current_time - start_time < 1000) {
-//    // go forward
-//    motor.rightDrive(RIGHT_WHEEL_FORWARD);
-//    motor.leftDrive(LEFT_WHEEL_FORWARD);
+    while(current_time - start_time < 5000) {
+      // go forward
+      motor.rightDrive(RIGHT_WHEEL_FORWARD);
+      motor.leftDrive(LEFT_WHEEL_FORWARD);
 
-//    // turn left
-//    motor.rightDrive(RIGHT_WHEEL_TURN_LEFT);
-//    motor.leftDrive(LEFT_WHEEL_TURN_LEFT);
+      // turn left
+//      motor.rightDrive(RIGHT_WHEEL_TURN_LEFT);
+//      motor.leftDrive(LEFT_WHEEL_TURN_LEFT);
       
       
-      // turn right
-      motor.rightDrive(RIGHT_WHEEL_TURN_RIGHT);
-      motor.leftDrive(LEFT_WHEEL_TURN_RIGHT);
+        // turn right
+//        motor.rightDrive(RIGHT_WHEEL_TURN_RIGHT);
+//        motor.leftDrive(LEFT_WHEEL_TURN_RIGHT);
+
+
       current_time = millis();
     }
     motor.brake();

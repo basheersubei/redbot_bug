@@ -20,16 +20,14 @@ boolean start = false;
 
 
 // variables for odometry
-float x = 0;      // in meters
-float y = 0;      // in meters
-float theta = 0;  // in radians
-
-#define SENSOR_VALUE 240 // You'll need to adjust these for your surface.
+double x = 0;      // in mm
+double y = 0;      // in mm
+double theta = 0;  // in radians
 
 // TODO actually calibrate robot and set these
-// there will be only two commands: go forward (at a constant rate v (in m/s)) and turn about center (at a constant rate omega (in rad/s)).
-#define FORWARD_VELOCITY 1.00f
-#define ROTATIONAL_VELOCITY 1.00f
+// there will be only two commands: go forward (at a constant rate v (in mm/ms)) and turn about center (at a constant rate omega (in rad/ms)).
+#define FORWARD_VELOCITY 0.086
+#define ROTATIONAL_VELOCITY 0.00094247779607
 // command speeds for both wheels when going forward
 #define LEFT_WHEEL_FORWARD 50
 #define RIGHT_WHEEL_FORWARD 46
@@ -39,6 +37,13 @@ float theta = 0;  // in radians
 // command speeds for both wheels when turning left
 #define LEFT_WHEEL_TURN_LEFT -50
 #define RIGHT_WHEEL_TURN_LEFT 50
+// goal position relative to start (in mm)
+#define GOAL_X 500
+#define GOAL_Y 500
+// threshold values (to allow for errors in measurements)
+#define GOAL_ANGLE_THRESHOLD 0.0523598776  // 3 degrees expressed in radians
+#define GOAL_THRESHOLD  50  // distance threshold within goal in mm
+#define SENSOR_VALUE 240 // You'll need to adjust these for your surface.
 
 enum movement_states {
   turning_left,
@@ -57,17 +62,18 @@ bug_states bug_state = heading_to_goal;
 // start off being stopped
 movement_states movement_state = stopped;
 
-// TODO set this
-// goal position relative to start (in meters)
-#define GOAL_X 1.0
-#define GOAL_Y 1.0
-
 unsigned long current_millis = 0;
 unsigned long previous_millis = 0;
 
-// threshold values (to allow for errors in measurements)
-#define GOAL_ANGLE_THRESHOLD 0.017453292519  // 1 degree expressed in radians
-
+/* Assumptions for coordinate system:
+ *
+ * positive x-axis is towards the right
+ * positive y-axis is towards the top
+ * positive theta orientation is towards counter-clockwise (turn left about center)
+ * theta starts at 0 pointing with the x-axis
+ *
+ * All units are: distance in mm, velocity in mm/ms, angles in radians, rotational velocity in rad/ms
+ */
 
 
 void setup()
@@ -77,13 +83,14 @@ void setup()
   //  used to detect it. We'll use that to start moving.
   xl.enableBump();
   
+  pinMode(13, OUTPUT);
   previous_millis = millis();
 }
 
 // returns angle from corrent orientation to goal
-float get_goal_angle() {
+double get_goal_angle() {
   // equation for phi is inversetan of (y2-y1) / (x2-x1)
-  float phi = atan((GOAL_Y - y) / (GOAL_X - x));
+  double phi = atan((double)(GOAL_Y - y) / (double)(GOAL_X - x));
   return phi - theta;
 }
 
@@ -104,10 +111,17 @@ boolean check_lost_line() {
   return false;
 }
 
+// returns true if close enough to goal within threshold, false otherwise
+bool found_goal() {
+  if(abs(x - GOAL_X) < GOAL_THRESHOLD && abs(y - GOAL_Y) < GOAL_THRESHOLD)
+    return true;
+  return false;
+}
+
 void loop()
 {
   current_millis = millis();
-  int delta_t = current_millis - previous_millis;
+  double delta_t = (double)(current_millis - previous_millis);  // in milliseconds
   
   // triggers start if accel has detected a bump
   if(xl.checkBump() && start == false) start = true;
@@ -116,10 +130,16 @@ void loop()
   if(start) {
     
     if(bug_state == heading_to_goal) {
-      float goal_angle = get_goal_angle();
+      double goal_angle = get_goal_angle();
+      Serial.println(goal_angle);
       
+      // if we found goal, stop motors and enter infinite loop (turn on LED 13)
+      if(found_goal()) {
+        digitalWrite(13, HIGH);   // turn the LED on (HIGH is the voltage level)
+        motor.brake();
+        while(true);
       // if we are off from the goal by threshold, turn towards goal
-      if(abs(goal_angle) > GOAL_ANGLE_THRESHOLD) {
+      } else if(abs(goal_angle) > GOAL_ANGLE_THRESHOLD) {
         if(goal_angle > 0) {
           // turn left
           motor.rightDrive(RIGHT_WHEEL_TURN_LEFT);
@@ -191,13 +211,20 @@ void loop()
       theta -= ROTATIONAL_VELOCITY * delta_t;
     // calculate x and y when going forward
     } else {
-      x += FORWARD_VELOCITY * delta_t * cos(theta);
-      y += FORWARD_VELOCITY * delta_t * sin(theta);
+      double delta_x = FORWARD_VELOCITY * delta_t * cos(theta);
+      double delta_y = FORWARD_VELOCITY * delta_t * sin(theta);
+
+      x += delta_x;
+      y += delta_y;
     }
     
     
     
   }
   
-  previous_millis = millis();
+  Serial.println(x);
+  Serial.println(y);
+  Serial.println(theta);
+  Serial.println(movement_state);
+  previous_millis = current_millis;
 }
