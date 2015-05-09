@@ -23,8 +23,8 @@
     <remap from="/image" to="/camera/image_mono" />
 
     <param name="image_is_rectified" type="bool" value="false"/>
-    <param name="marker_size" type="double" value="0.05"/>
-    <param name="board_config" type="string" value="$(find redbot_bug)/misc/aruco_data/redbot.yml"/>
+    <param name="marker_size" type="double" value="0.2032"/>
+    <param name="board_config" type="string" value="$(find redbot_bug)/misc/aruco_data/redbot_huge.yml"/>
     <param name="board_frame" type="string" value="/board1" />
     <param name="draw_markers" type="bool" value="false" />
     <param name="draw_markers_cube" type="bool" value="true" />

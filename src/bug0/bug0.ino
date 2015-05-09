@@ -2,6 +2,23 @@
  * Bug0 algorithm implemented on standard RedBot
  */
 #include <RedBot.h>
+/*
+* rosserial node subscribes to transform data from aruco marker
+* and uses that as odometry source for running bug algorithm (RedBot)
+*/
+//#define USE_USBCON
+#include <ros.h>
+#include <tf/tf.h>
+#include <ros/time.h>
+#include <geometry_msgs/Pose2D.h>
+#include <geometry_msgs/Point.h>
+ros::NodeHandle nh;
+void transform_callback( const geometry_msgs::TransformStamped& t);
+ros::Subscriber<geometry_msgs::TransformStamped> transform_sub("/ar_single_board/transform", transform_callback );
+//geometry_msgs::Pose2D odom;
+geometry_msgs::Point odom;
+ros::Publisher odom_pub("odom_debug", &odom);
+
 
 // Instantiate the motor control class. This only needs to be done once
 //  and indeed SHOULD only be done once!
@@ -14,32 +31,32 @@ RedBotSensor cSen = RedBotSensor(A6);
 RedBotSensor rSen = RedBotSensor(A7); 
 // Instantiate the accelerometer. It can only be connected to pins A4
 //  and A5, since those are the I2C pins for this board.
-RedBotAccel xl;
+//RedBotAccel xl;
 // Variable used to wait on a bump before starting operation.
 boolean start = false;
 
 
 // variables for odometry
-double x = 0;      // in mm
-double y = 0;      // in mm
+double x = 1000;      // in mm
+double y = 1000;      // in mm
 double theta = 0;  // in radians
 
-#define SENSOR_VALUE 800 // You'll need to adjust these for your surface.
+#define SENSOR_VALUE 400 // You'll need to adjust these for your surface.
 // TODO actually calibrate robot and set these
 // there will be only two commands: go forward (at a constant rate v (in m/s)) and turn about center (at a constant rate omega (in rad/s)).
 #define FORWARD_VELOCITY 0.1111
 #define ROTATIONAL_VELOCITY 0.0020420352
 // command speeds for both wheels when going forward
-#define LEFT_WHEEL_FORWARD 50
-#define RIGHT_WHEEL_FORWARD 46
+#define LEFT_WHEEL_FORWARD 80
+#define RIGHT_WHEEL_FORWARD 74
 // command speeds for both wheels when turning right
-#define LEFT_WHEEL_TURN_RIGHT 50
-#define RIGHT_WHEEL_TURN_RIGHT -50
+#define LEFT_WHEEL_TURN_RIGHT 45
+#define RIGHT_WHEEL_TURN_RIGHT -45
 // command speeds for both wheels when turning left
-#define LEFT_WHEEL_TURN_LEFT -50
-#define RIGHT_WHEEL_TURN_LEFT 50
+#define LEFT_WHEEL_TURN_LEFT -45
+#define RIGHT_WHEEL_TURN_LEFT 45
 // goal position relative to start (in mm)
-#define GOAL_X 800
+#define GOAL_X 0
 #define GOAL_Y 0
 // threshold values (to allow for errors in measurements)
 #define GOAL_ANGLE_THRESHOLD 0.0523598776  // 3 degrees expressed in radians
@@ -69,11 +86,12 @@ bug_states bug_state = heading_to_goal;
 // start off being stopped
 movement_states movement_state = stopped;
 
+
 unsigned long current_millis = 0;
 unsigned long previous_millis = 0;
 unsigned long last_debounced = 0;
 bool debouncing = false;
-
+bool marker_seen = false;
 /* Assumptions for coordinate system:
  *
  * positive x-axis is towards the right
@@ -85,18 +103,38 @@ bool debouncing = false;
  */
 
 
+void transform_callback( const geometry_msgs::TransformStamped& t){
+  x = t.transform.translation.x * 1000.0;
+  y = t.transform.translation.y * 1000.0;
+//  t.transform.rotation.getRPY(r, p, y);
+//  theta = y;
+  geometry_msgs::Quaternion q = t.transform.rotation;
+//  theta = atan2(2.0*(q.y*q.z + q.w*q.x), q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z);
+//  theta = atan2(2*q.y*q.w-2*q.x*q.z , 1 - 2*q.y*q.y - 2*q.z*q.z);
+  theta = atan2((q.y*q.z + q.x*q.w), 1/2 - (q.z*q.z + q.w*q.w));
+  odom.x = x;
+  odom.y = y;
+  odom.z = theta;
+//  odom.theta = theta;
+  odom_pub.publish(&odom);
+  marker_seen = true;
+}
+
 void setup()
 {
-  Serial.begin(57600);
+//  Serial.begin(115200);
   // Enable bump detection. Once a bump occurs, xl.checkBump() can be
   //  used to detect it. We'll use that to start moving.
-  xl.enableBump();
+//  xl.enableBump();
   
   pinMode(13, OUTPUT);
   pinMode(LEFT_LED, OUTPUT);
   pinMode(CENTER_LED, OUTPUT);
   pinMode(RIGHT_LED, OUTPUT);
   previous_millis = millis();
+  nh.initNode(); // initializes ROS node
+  nh.subscribe(transform_sub);
+  nh.advertise(odom_pub);
 }
 
 // lights up LEDs based on sensor data
@@ -206,14 +244,15 @@ bool found_goal() {
 
 void head_to_goal() {
   double goal_angle = get_goal_angle();
-  Serial.println(goal_angle);
+//  Serial.println(goal_angle);
   
   // if we found goal, stop motors and enter infinite loop (turn on LED 13)
   if(found_goal()) {      
     motor.brake();
     while(true) {
+      nh.spinOnce();
       digitalWrite(13, HIGH-digitalRead(13));   // blink the LED
-      delay(100);
+      delay(500);
     }
   // if we are off from the goal by threshold, turn towards goal
   } else if(abs(goal_angle) > GOAL_ANGLE_THRESHOLD) {
@@ -246,7 +285,7 @@ void follow_line() {
     motor.leftDrive(LEFT_WHEEL_TURN_RIGHT);
     movement_state = turning_right;
     
-    delay(100);
+//    delay(100);
     
   // otherwise go forward and check if we either can reach the goal or we lost the line while tracing it
   } else {
@@ -265,7 +304,7 @@ void follow_line() {
       motor.leftDrive(LEFT_WHEEL_TURN_RIGHT);
       movement_state = turning_right;
       bug_state = heading_to_goal;
-      delay(100);
+//      delay(100);
       
     // else if we lost the line, turn left to find it again
     } else if (check_lost_line()) {
@@ -273,7 +312,7 @@ void follow_line() {
       motor.rightDrive(RIGHT_WHEEL_TURN_LEFT);
       motor.leftDrive(LEFT_WHEEL_TURN_LEFT);
       movement_state = turning_left;
-      delay(100);
+//      delay(1000);
     }
     
     // otherwise keep following line by going forward
@@ -303,13 +342,18 @@ void update_odometry() {
 
 void loop()
 {
+//  while(true) {
+    nh.spinOnce();
+//  }
   
   sensor_led_debug();
+  
   // triggers start if accel has detected a bump
-  if(xl.checkBump() && start == false) start = true;
+//  if(xl.checkBump() && start == false) start = true;
   
   // start
-  if(start) {
+//  if(start) {
+  if(marker_seen) {
     
     // if we are heading to goal
     if(bug_state == heading_to_goal) {
@@ -328,24 +372,25 @@ void loop()
       follow_line();
       
     // sanity check
-    } else {
-      motor.brake();
-      while(true) {
-        digitalWrite(13, HIGH-digitalRead(13));   // blink the LED
-        delay(500);
-      }
-    }
+    } 
+//    else {
+//      motor.brake();
+//      while(true) {
+//        digitalWrite(13, HIGH-digitalRead(13));   // blink the LED
+//        delay(500);
+//      }
+//    }
     
     // update odometry based on the choices it made above
-    update_odometry();
+//    update_odometry();
   }
   
-  Serial.print("x:\t"); Serial.print(x); Serial.print("\t"); 
-  Serial.print("y:\t"); Serial.print(y); Serial.print("\t"); 
-  Serial.print("theta:\t"); Serial.print(theta); Serial.print("\t");
-  Serial.print("m_state\t:"); Serial.print(movement_state); Serial.print("\t");
-  Serial.print("b_state\t:"); Serial.print(bug_state); Serial.print("\t");
-
-  Serial.println();
+//  Serial.print("x:\t"); Serial.print(x); Serial.print("\t"); 
+//  Serial.print("y:\t"); Serial.print(y); Serial.print("\t"); 
+//  Serial.print("theta:\t"); Serial.print(theta); Serial.print("\t");
+//  Serial.print("m_state\t:"); Serial.print(movement_state); Serial.print("\t");
+//  Serial.print("b_state\t:"); Serial.print(bug_state); Serial.print("\t");
+//
+//  Serial.println();
   previous_millis = current_millis;
 }
