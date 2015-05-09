@@ -5,8 +5,9 @@ project(redbot_bug)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
   roscpp
-  rospy
+  tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -102,16 +103,14 @@ include_directories(
 # )
 
 ## Declare a cpp executable
-# add_executable(redbot_bug_node src/redbot_bug_node.cpp)
+add_executable(odom_publisher src/odom_publisher/odom_publisher.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(redbot_bug_node redbot_bug_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(redbot_bug_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(odom_publisher ${catkin_LIBRARIES})
 
 #############
 ## Install ##

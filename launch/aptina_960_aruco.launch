@@ -31,4 +31,6 @@
     <param name="draw_markers_axis" type="bool" value="false" />
   </node>
 
+  <node pkg="redbot_bug" type="redbot_bug" name="odom_publisher" />
+
 </launch>
