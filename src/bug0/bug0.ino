@@ -39,7 +39,7 @@ double theta = 0;  // in radians
 #define LEFT_WHEEL_TURN_LEFT -50
 #define RIGHT_WHEEL_TURN_LEFT 50
 // goal position relative to start (in mm)
-#define GOAL_X 250
+#define GOAL_X 500
 #define GOAL_Y 0
 // threshold values (to allow for errors in measurements)
 #define GOAL_ANGLE_THRESHOLD 0.0523598776  // 3 degrees expressed in radians
@@ -172,7 +172,7 @@ boolean check_lost_line() {
   
 }
 
-// returns true if any sensors see anything, false otherwise
+// returns true if any sensors (except left) see anything, false otherwise
 bool check_for_obstacles() {
   // if we're not currently debouncing, then start debouncing
 //  if(!debouncing) {
@@ -184,9 +184,9 @@ bool check_for_obstacles() {
   // if it hasn't been that long, return false
 //  if(millis() - last_debounced < DEBOUNCE_THRESHOLD) {
 //    return false;
-//  // otherwise, check if sensors see any lines
+//  // otherwise, check if sensors (except left) see any lines
 //  } else 
-  if(lSen.read() > SENSOR_VALUE || cSen.read() > SENSOR_VALUE || rSen.read() > SENSOR_VALUE) {
+  if(cSen.read() > SENSOR_VALUE || rSen.read() > SENSOR_VALUE) {
 //    last_debounced = millis();
 //    debouncing = false;
     return true;
@@ -338,7 +338,9 @@ void loop()
   Serial.print("x:\t"); Serial.print(x); Serial.print("\t"); 
   Serial.print("y:\t"); Serial.print(y); Serial.print("\t"); 
   Serial.print("theta:\t"); Serial.print(theta); Serial.print("\t");
-  Serial.print("m_state\t:");Serial.print(movement_state); Serial.print("\t");
+  Serial.print("m_state\t:"); Serial.print(movement_state); Serial.print("\t");
+  Serial.print("b_state\t:"); Serial.print(bug_state); Serial.print("\t");
+
   Serial.println();
   previous_millis = current_millis;
 }
