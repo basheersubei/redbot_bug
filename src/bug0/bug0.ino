@@ -11,7 +11,7 @@ RedBotMotors motor;
 //  accelerometer uses pins A4 and A5.
 RedBotSensor lSen = RedBotSensor(A3);
 RedBotSensor cSen = RedBotSensor(A6);
-RedBotSensor rSen = RedBotSensor(A7);
+RedBotSensor rSen = RedBotSensor(A7); 
 // Instantiate the accelerometer. It can only be connected to pins A4
 //  and A5, since those are the I2C pins for this board.
 RedBotAccel xl;
@@ -24,7 +24,7 @@ double x = 0;      // in mm
 double y = 0;      // in mm
 double theta = 0;  // in radians
 
-#define SENSOR_VALUE 400 // You'll need to adjust these for your surface.
+#define SENSOR_VALUE 800 // You'll need to adjust these for your surface.
 // TODO actually calibrate robot and set these
 // there will be only two commands: go forward (at a constant rate v (in m/s)) and turn about center (at a constant rate omega (in rad/s)).
 #define FORWARD_VELOCITY 0.1111
@@ -39,7 +39,7 @@ double theta = 0;  // in radians
 #define LEFT_WHEEL_TURN_LEFT -50
 #define RIGHT_WHEEL_TURN_LEFT 50
 // goal position relative to start (in mm)
-#define GOAL_X 500
+#define GOAL_X 800
 #define GOAL_Y 0
 // threshold values (to allow for errors in measurements)
 #define GOAL_ANGLE_THRESHOLD 0.0523598776  // 3 degrees expressed in radians
@@ -209,7 +209,7 @@ void head_to_goal() {
   Serial.println(goal_angle);
   
   // if we found goal, stop motors and enter infinite loop (turn on LED 13)
-  if(found_goal()) {
+  if(found_goal()) {      
     motor.brake();
     while(true) {
       digitalWrite(13, HIGH-digitalRead(13));   // blink the LED
@@ -246,6 +246,7 @@ void follow_line() {
     motor.leftDrive(LEFT_WHEEL_TURN_RIGHT);
     movement_state = turning_right;
     
+    delay(100);
     
   // otherwise go forward and check if we either can reach the goal or we lost the line while tracing it
   } else {
@@ -255,13 +256,16 @@ void follow_line() {
     motor.leftDrive(LEFT_WHEEL_FORWARD);
     movement_state = forward;
     
+    // TODO make sure it actually leaves the line
     // if we can reach the goal (it's on our left), go towards goal
     if(get_goal_angle() < 0) {
       bug_state = heading_to_goal;
-      // stop robot
-      motor.brake();
-      movement_state = stopped;
+      // turn right towards goal (away from line)
+      motor.rightDrive(RIGHT_WHEEL_TURN_RIGHT);
+      motor.leftDrive(LEFT_WHEEL_TURN_RIGHT);
+      movement_state = turning_right;
       bug_state = heading_to_goal;
+      delay(100);
       
     // else if we lost the line, turn left to find it again
     } else if (check_lost_line()) {
@@ -269,6 +273,7 @@ void follow_line() {
       motor.rightDrive(RIGHT_WHEEL_TURN_LEFT);
       motor.leftDrive(LEFT_WHEEL_TURN_LEFT);
       movement_state = turning_left;
+      delay(100);
     }
     
     // otherwise keep following line by going forward
@@ -277,6 +282,7 @@ void follow_line() {
 }
 
 void update_odometry() { 
+  current_millis = millis();
   double delta_t = (double)(current_millis - previous_millis);  // in milliseconds
   // calculate odometry according to movement_state (regardless of bug_state)
   // calculate omega when turning left
@@ -286,7 +292,7 @@ void update_odometry() {
   } else if(movement_state == turning_right) {
     theta -= ROTATIONAL_VELOCITY * delta_t;
   // calculate x and y when going forward
-  } else {
+  } else if(movement_state == forward) {
     double delta_x = FORWARD_VELOCITY * delta_t * cos(theta);
     double delta_y = FORWARD_VELOCITY * delta_t * sin(theta);
   
@@ -299,7 +305,6 @@ void loop()
 {
   
   sensor_led_debug();
-  current_millis = millis();
   // triggers start if accel has detected a bump
   if(xl.checkBump() && start == false) start = true;
   
